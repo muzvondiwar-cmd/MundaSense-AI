@@ -1,0 +1,64 @@
+catalogue_version: advisory-demo-v1
+status: demonstration_pending_agronomic_review
+rules:
+  - id: ADV-DATA-001
+    title_key: advice.verify.title
+    message_key: advice.verify.body
+    priority: 100
+    trigger: severe_warning
+    rationale: Unusual or contradictory data must be verified before other advice is considered.
+    review_status: engineering_safety_rule_pending_agronomic_review
+    locale_applicability: [en, sn]
+    referral_required: true
+    effective_date: 2026-08-31
+  - id: ADV-CONF-001
+    title_key: advice.low_confidence.title
+    message_key: advice.low_confidence.body
+    priority: 90
+    trigger: low_confidence
+    rationale: Weak individual-case evidence should defer to field observation and professional review.
+    review_status: engineering_safety_rule_pending_agronomic_review
+    locale_applicability: [en, sn]
+    referral_required: true
+    effective_date: 2026-08-31
+  - id: ADV-RISK-001
+    title_key: advice.high_risk.title
+    message_key: advice.high_risk.body
+    priority: 80
+    trigger: high_risk
+    rationale: A provisional high-risk result warrants human review and field context.
+    review_status: demonstration_policy_pending_local_validation
+    locale_applicability: [en, sn]
+    referral_required: true
+    effective_date: 2026-08-31
+  - id: ADV-WATER-001
+    title_key: advice.water_stress.title
+    message_key: advice.water_stress.body
+    priority: 60
+    trigger: possible_water_stress
+    rationale: Field inspection and monitoring are safe responses to low rainfall or heat signals.
+    review_status: general_safe_message_pending_agronomic_review
+    locale_applicability: [en, sn]
+    referral_required: false
+    effective_date: 2026-08-31
+  - id: ADV-SOIL-001
+    title_key: advice.soil_test.title
+    message_key: advice.soil_test.body
+    priority: 50
+    trigger: unusual_soil_ph
+    rationale: Soil testing avoids unreviewed nutrient or amendment prescriptions.
+    review_status: general_safe_message_pending_agronomic_review
+    locale_applicability: [en, sn]
+    referral_required: false
+    effective_date: 2026-08-31
+  - id: ADV-MONITOR-001
+    title_key: advice.monitor.title
+    message_key: advice.monitor.body
+    priority: 10
+    trigger: always
+    rationale: Structured monitoring is a safe default action when no higher-priority rule applies.
+    review_status: general_safe_message_pending_agronomic_review
+    locale_applicability: [en, sn]
+    referral_required: false
+    effective_date: 2026-08-31
+

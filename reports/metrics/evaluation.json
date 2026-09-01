@@ -1,0 +1,167 @@
+{
+  "candidate_comparison": [
+    {
+      "absolute_error_p90_t_ha": 2.002,
+      "mae_t_ha": 0.8623516483516483,
+      "median_absolute_error_t_ha": 0.718,
+      "model": "naive_median",
+      "r2": -0.00907261702124651,
+      "rmse_t_ha": 1.0754779361794415,
+      "sample_count": 91
+    },
+    {
+      "absolute_error_p90_t_ha": 1.5972906955194661,
+      "mae_t_ha": 0.7767812376886452,
+      "median_absolute_error_t_ha": 0.6850000660188664,
+      "model": "ridge",
+      "r2": 0.16181204064941168,
+      "rmse_t_ha": 0.9801916612765254,
+      "sample_count": 91
+    },
+    {
+      "absolute_error_p90_t_ha": 1.1773229745871414,
+      "mae_t_ha": 0.5100930009223081,
+      "median_absolute_error_t_ha": 0.38595705793804935,
+      "model": "random_forest",
+      "r2": 0.6387783107294505,
+      "rmse_t_ha": 0.6434683706707587,
+      "sample_count": 91
+    },
+    {
+      "absolute_error_p90_t_ha": 1.035568593871505,
+      "mae_t_ha": 0.479378767573196,
+      "median_absolute_error_t_ha": 0.3821098639441456,
+      "model": "gradient_boosting",
+      "r2": 0.681170875554361,
+      "rmse_t_ha": 0.6045319907329973,
+      "sample_count": 91
+    }
+  ],
+  "created_at": "2026-08-31T20:49:56+00:00",
+  "data_quality": {
+    "column_count": 12,
+    "data_sources": [
+      "MundaSense deterministic synthetic demo generator v1"
+    ],
+    "district_count": 8,
+    "duplicate_record_ids": 0,
+    "iqr_outlier_count": {
+      "fertilizer_kg_ha": 31,
+      "humidity_pct": 9,
+      "rainfall_mm": 3,
+      "soil_ph": 12,
+      "temperature_c": 4,
+      "yield_t_ha": 1
+    },
+    "is_synthetic": true,
+    "missing_by_column": {
+      "crop": 0,
+      "data_source": 0,
+      "district": 0,
+      "fertilizer_kg_ha": 0,
+      "humidity_pct": 0,
+      "is_synthetic": 0,
+      "rainfall_mm": 0,
+      "record_id": 0,
+      "season": 0,
+      "soil_ph": 0,
+      "temperature_c": 0,
+      "yield_t_ha": 0
+    },
+    "row_count": 720,
+    "season_count": 4,
+    "status": "pass"
+  },
+  "dataset_fingerprint": "4206b10f20f1c2cd4242ce58b6dd8203339fe98c39634709337c862039af0104",
+  "held_out_test_metrics": {
+    "absolute_error_p90_t_ha": 0.984802021515971,
+    "baseline_validation_mae_t_ha": 0.8623516483516483,
+    "champion_validation_mae_t_ha": 0.479378767573196,
+    "interval_empirical_coverage": 0.9032258064516129,
+    "interval_nominal_coverage": 0.9,
+    "mae_t_ha": 0.4747416484694775,
+    "mean_interval_width_t_ha": 2.0275303486930665,
+    "median_absolute_error_t_ha": 0.39899705401993724,
+    "r2": 0.6181144223500799,
+    "rmse_t_ha": 0.6039337122830745,
+    "sample_count": 186,
+    "validation_mae_improvement_over_baseline": 0.4441029149889029
+  },
+  "is_synthetic": true,
+  "model_version": "demo-2026.08-v1",
+  "split_strategy": {
+    "calibration_locations": [
+      "Mutare"
+    ],
+    "rationale": "Approximates deployment to locations unseen during model fitting.",
+    "test_locations": [
+      "Plumtree",
+      "Zvishavane"
+    ],
+    "train_locations": [
+      "Bindura",
+      "Chinhoyi",
+      "Gokwe South",
+      "Goromonzi",
+      "Masvingo"
+    ],
+    "type": "held-out district groups"
+  },
+  "subgroup_metrics": [
+    {
+      "absolute_error_p90_t_ha": 1.0594886366208247,
+      "district": "Plumtree",
+      "mae_t_ha": 0.4856336730431891,
+      "median_absolute_error_t_ha": 0.36591559749402025,
+      "r2": 0.5760756287004072,
+      "rmse_t_ha": 0.6249045202802739,
+      "sample_count": 99
+    },
+    {
+      "absolute_error_p90_t_ha": 0.9550998088632693,
+      "district": "Zvishavane",
+      "mae_t_ha": 0.46234727567870215,
+      "median_absolute_error_t_ha": 0.4230540939402938,
+      "r2": 0.6623837797773415,
+      "rmse_t_ha": 0.5791474359716399,
+      "sample_count": 87
+    }
+  ],
+  "training_ranges": {
+    "fertilizer_kg_ha": {
+      "max": 360.0,
+      "median": 97.1,
+      "min": 5.9,
+      "q01": 12.076,
+      "q99": 344.3479999999999
+    },
+    "humidity_pct": {
+      "max": 92.0,
+      "median": 66.4,
+      "min": 41.2,
+      "q01": 45.726,
+      "q99": 91.74799999999999
+    },
+    "rainfall_mm": {
+      "max": 1150.0,
+      "median": 629.7,
+      "min": 150.0,
+      "q01": 153.024,
+      "q99": 993.4299999999997
+    },
+    "soil_ph": {
+      "max": 8.16,
+      "median": 6.09,
+      "min": 4.2,
+      "q01": 4.2,
+      "q99": 7.493199999999999
+    },
+    "temperature_c": {
+      "max": 34.7,
+      "median": 25.2,
+      "min": 16.6,
+      "q01": 18.384,
+      "q99": 32.416
+    }
+  }
+}
