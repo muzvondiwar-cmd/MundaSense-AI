@@ -6,6 +6,7 @@ from mundasense.ui.components import (
     configure_page,
     demo_banner,
     locale_control,
+    section_heading,
 )
 from mundasense.ui.runtime import get_runtime
 
@@ -30,18 +31,30 @@ st.markdown(
     """
 <section class="ms-hero">
   <div class="ms-eyebrow">Offline-first maize decision support</div>
-  <h1>Know the risk.<br><span class="ms-kicker">Understand the cause.</span></h1>
-  <p class="ms-lead">MundaSense turns five field conditions into an explainable maize-yield estimate, a provisional risk category, and one guarded next step—without sending farm data to a cloud service.</p>
-  <span class="ms-offline">● Core assessment runs locally</span>
+  <h1>Know the risk.<br><span class="ms-kicker">See what shapes it.</span></h1>
+  <p class="ms-lead">Turn five familiar field conditions into an explainable maize-yield range, a provisional risk category, and one guarded next step—without sending farm data to a cloud service.</p>
+  <div class="ms-hero-badges">
+    <span class="ms-badge"><span class="ms-badge-dot"></span>Core assessment runs locally</span>
+    <span class="ms-badge">◫ Traceable history</span>
+    <span class="ms-badge">◎ Explainable results</span>
+  </div>
 </section>
 """,
     unsafe_allow_html=True,
 )
 
-if st.button(translator.t("action.start", locale), type="primary", width="content"):
+primary_action, secondary_action, _ = st.columns([1.15, 1.25, 2.6])
+if primary_action.button(
+    translator.t("action.start", locale), type="primary", width="stretch", icon="🌽"
+):
     st.switch_page("pages/01_New_Assessment.py")
+if secondary_action.button("Explore model evidence", width="stretch", icon="📊"):
+    st.switch_page("pages/03_Model_Evaluation.py")
 
-st.markdown("## A clear path from field notes to a safer decision")
+section_heading(
+    "A clear path from field notes to a safer decision",
+    "Designed to be readable in the field and reviewable by an extension officer.",
+)
 steps = [
     ("1", "Enter conditions", "Record seasonal weather, soil pH, and fertiliser already applied."),
     (
@@ -63,14 +76,54 @@ for column, (number, title, body) in zip(columns, steps, strict=True):
         unsafe_allow_html=True,
     )
 
-st.markdown("## Designed for honest use")
-left, right = st.columns(2)
-left.markdown(
-    '<div class="ms-panel"><h3>What it does</h3><p>Creates a traceable local assessment with prediction, range, top drivers, warnings, policy versions, and saved history.</p></div>',
+section_heading(
+    "One result, two useful views",
+    "Switch from a concise field explanation to deeper evidence without losing the safety context.",
+)
+farmer_tab, officer_tab = st.tabs(["🌱 Farmer summary", "🧭 Extension detail"])
+with farmer_tab:
+    farmer_one, farmer_two = st.columns([1.15, 1])
+    farmer_one.markdown(
+        '<div class="ms-bento ms-bento-accent"><span class="ms-card-label">At a glance</span>'
+        "<h3>A range you can read quickly</h3><p>See the central yield estimate, plausible range, "
+        "risk label, confidence, and the most important guarded next action together.</p></div>",
+        unsafe_allow_html=True,
+    )
+    farmer_two.markdown(
+        '<div class="ms-bento"><div class="ms-card-icon">✓</div><h3>Clarity before detail</h3>'
+        "<p>Plain-language drivers and unusual-input warnings remain close to the result.</p></div>",
+        unsafe_allow_html=True,
+    )
+with officer_tab:
+    officer_one, officer_two = st.columns(2)
+    officer_one.markdown(
+        '<div class="ms-bento"><div class="ms-card-icon">⌁</div><h3>Trace every decision</h3>'
+        "<p>Review model, policy, rule, warning, and explanation versions for each saved snapshot.</p></div>",
+        unsafe_allow_html=True,
+    )
+    officer_two.markdown(
+        '<div class="ms-bento"><div class="ms-card-icon">◫</div><h3>Inspect the evidence</h3>'
+        "<p>Open calibrated ranges, model associations, held-out metrics, and local readiness checks.</p></div>",
+        unsafe_allow_html=True,
+    )
+
+section_heading(
+    "Designed for honest use", "Clear boundaries are part of the interface—not fine print."
+)
+honest_one, honest_two, honest_three = st.columns([1, 1, 1])
+honest_one.markdown(
+    '<div class="ms-bento"><span class="ms-card-label">Private by default</span>'
+    "<h3>Local assessment</h3><p>Core inputs, results, and history stay on this device by default.</p></div>",
     unsafe_allow_html=True,
 )
-right.markdown(
-    '<div class="ms-panel"><h3>What it does not do</h3><p>It does not prescribe chemical or fertiliser doses, guarantee a harvest, or replace field inspection and qualified agronomic judgement.</p></div>',
+honest_two.markdown(
+    '<div class="ms-bento"><span class="ms-card-label">Bounded advice</span>'
+    "<h3>No dose prescription</h3><p>The tool records applied fertiliser; it never calculates a treatment dose.</p></div>",
+    unsafe_allow_html=True,
+)
+honest_three.markdown(
+    '<div class="ms-bento"><span class="ms-card-label">Human support</span>'
+    "<h3>Referral when needed</h3><p>High risk, weak confidence, or unusual inputs can trigger extension review.</p></div>",
     unsafe_allow_html=True,
 )
 
