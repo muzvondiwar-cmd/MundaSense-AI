@@ -8,10 +8,14 @@ from statistics import fmean
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Query, Request, Response
+from fastapi.encoders import jsonable_encoder
+from fastapi.exception_handlers import http_exception_handler, request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
+from backend.api.v1 import build_v1_router
 from backend.dependencies import Runtime, get_runtime
 from backend.schemas import (
     AppConfigResponse,
@@ -198,13 +202,49 @@ def create_app(runtime_override: Runtime | None = None) -> FastAPI:
         CORSMiddleware,
         allow_origins=_cors_origins(),
         allow_credentials=False,
-        allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+        allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Accept", "Content-Type", "Idempotency-Key"],
     )
     app.mount("/brand", StaticFiles(directory=project_root() / "assets"), name="brand")
 
     def runtime() -> Runtime:
         return runtime_override or get_runtime()
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error(request: Request, exc: RequestValidationError):
+        if not request.url.path.startswith("/api/v1/"):
+            return await request_validation_exception_handler(request, exc)
+        return JSONResponse(
+            status_code=422,
+            content={
+                "error": {
+                    "code": "request_validation_error",
+                    "message": "One or more request values are invalid.",
+                    "details": jsonable_encoder(exc.errors()),
+                }
+            },
+        )
+
+    @app.exception_handler(HTTPException)
+    async def api_error(request: Request, exc: HTTPException):
+        if not request.url.path.startswith("/api/v1/"):
+            return await http_exception_handler(request, exc)
+        detail = exc.detail
+        if isinstance(detail, dict):
+            code = str(detail.get("code", "request_error"))
+            message = str(detail.get("message", detail.get("detail", "Request failed.")))
+            details = detail
+        else:
+            code = "request_error"
+            message = str(detail)
+            details = None
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"error": {"code": code, "message": message, "details": details}},
+            headers=exc.headers,
+        )
+
+    app.include_router(build_v1_router(runtime))
 
     @app.middleware("http")
     async def limit_request_size(request: Request, call_next):
@@ -464,9 +504,11 @@ def create_app(runtime_override: Runtime | None = None) -> FastAPI:
         risk_counts = Counter(item.risk_code for item in results)
         confidence_counts = Counter(item.confidence_code for item in results)
         day_counts = Counter(item.created_at[:10] for item in results)
+        day_yields: defaultdict[str, list[float]] = defaultdict(list)
         driver_counts = Counter(driver.feature for item in results for driver in item.top_drivers)
         district_yields: defaultdict[str, list[float]] = defaultdict(list)
         for item in results:
+            day_yields[item.created_at[:10]].append(item.predicted_yield_t_ha)
             if item.validated_inputs.district:
                 district_yields[item.validated_inputs.district].append(item.predicted_yield_t_ha)
         priority = sorted(
@@ -495,6 +537,14 @@ def create_app(runtime_override: Runtime | None = None) -> FastAPI:
             ),
             assessments_over_time=[
                 CountPoint(label=label, count=count) for label, count in sorted(day_counts.items())
+            ],
+            yield_over_time=[
+                YieldPoint(
+                    label=label,
+                    average_yield_t_ha=round(fmean(values), 3),
+                    sample_size=len(values),
+                )
+                for label, values in sorted(day_yields.items())
             ],
             risk_distribution=[
                 CountPoint(label=label, count=risk_counts[label])

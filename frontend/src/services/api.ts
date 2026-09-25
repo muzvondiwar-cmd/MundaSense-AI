@@ -9,6 +9,13 @@ import type {
   Locale,
   ModelCardResponse,
   ScenarioSimulation,
+  Farm,
+  Field,
+  FarmCreate,
+  FieldCreate,
+  InsightsResponse,
+  SyncBatchRequest,
+  SyncBatchResponse,
 } from "../types/api";
 
 export class ApiError extends Error {
@@ -21,7 +28,8 @@ export class ApiError extends Error {
   }
 }
 
-const API_ROOT = import.meta.env.VITE_API_ROOT ?? "/api";
+const API_ROOT = import.meta.env.VITE_API_ROOT ?? "/api/v1";
+const LEGACY_API_ROOT = import.meta.env.VITE_LEGACY_API_ROOT ?? "/api";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const controller = new AbortController();
@@ -39,7 +47,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       } catch {
         detail = await response.text();
       }
-      throw new ApiError(`Request failed with status ${response.status}`, response.status, detail);
+      throw new ApiError(
+        `Request failed with status ${response.status}`,
+        response.status,
+        detail,
+      );
     }
     if (response.status === 204) return undefined as T;
     return (await response.json()) as T;
@@ -50,7 +62,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   health: () => request<HealthResponse>("/health"),
-  config: (language: Locale) => request<AppConfig>(`/config?language=${language}`),
+  config: (language: Locale) =>
+    request<AppConfig>(`/config?language=${language}`),
   demoScenarios: () => request<DemoScenario[]>("/demo-scenarios"),
   createAssessment: (payload: AssessmentCreate) =>
     request<AssessmentResponse>("/assessments", {
@@ -58,12 +71,21 @@ export const api = {
       body: JSON.stringify(payload),
     }),
   getAssessment: (id: string, language: Locale) =>
-    request<AssessmentResponse>(`/assessments/${encodeURIComponent(id)}?language=${language}`),
-  listAssessments: (query = "") => request<HistoryResponse>(`/assessments${query}`),
+    request<AssessmentResponse>(
+      `/assessments/${encodeURIComponent(id)}?language=${language}`,
+    ),
+  listAssessments: (query = "") =>
+    request<HistoryResponse>(`/assessments${query}`),
   deleteAssessment: (id: string) =>
-    request<void>(`/assessments/${encodeURIComponent(id)}`, { method: "DELETE" }),
-  simulate: (baselineId: string, overrides: Record<string, number>, language: Locale) =>
-    request<ScenarioSimulation>("/scenarios/simulate", {
+    request<void>(`/assessments/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    }),
+  simulate: (
+    baselineId: string,
+    overrides: Record<string, number>,
+    language: Locale,
+  ) =>
+    request<ScenarioSimulation>("/scenarios/compare", {
       method: "POST",
       body: JSON.stringify({
         baseline_assessment_id: baselineId,
@@ -71,13 +93,45 @@ export const api = {
         language,
       }),
     }),
-  dashboard: (query = "") => request<DashboardResponse>(`/dashboard/summary${query}`),
-  modelCard: (language: Locale) => request<ModelCardResponse>(`/model-card?language=${language}`),
-  exportUrl: (query = "") => `${API_ROOT}/assessments/export.csv${query}`,
-  reportUrl: (id: string) => `${API_ROOT}/assessments/${encodeURIComponent(id)}/report`,
+  dashboard: (query = "") =>
+    request<DashboardResponse>(`/dashboard/summary${query}`),
+  modelCard: (language: Locale) =>
+    request<ModelCardResponse>(`/model/info?language=${language}`),
+  farms: () => request<Farm[]>("/farms"),
+  createFarm: (payload: FarmCreate) =>
+    request<Farm>("/farms", { method: "POST", body: JSON.stringify(payload) }),
+  fields: (farmId?: string) =>
+    request<Field[]>(
+      `/fields${farmId ? `?farm_id=${encodeURIComponent(farmId)}` : ""}`,
+    ),
+  createField: (payload: FieldCreate) =>
+    request<Field>("/fields", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  insights: () => request<InsightsResponse>("/insights"),
+  syncBatch: (payload: SyncBatchRequest) =>
+    request<SyncBatchResponse>("/sync/batch", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  archiveAssessment: (id: string) =>
+    request<void>(`/assessments/${encodeURIComponent(id)}/archive`, {
+      method: "PATCH",
+    }),
+  resetDemoData: () =>
+    request<{ status: string; removed_assessments: number }>("/demo-data", {
+      method: "DELETE",
+    }),
+  exportUrl: (query = "") =>
+    `${LEGACY_API_ROOT}/assessments/export.csv${query}`,
+  reportUrl: (id: string) =>
+    `${LEGACY_API_ROOT}/assessments/${encodeURIComponent(id)}/report`,
 };
 
-export function assessmentToCreate(result: AssessmentResponse): AssessmentCreate {
+export function assessmentToCreate(
+  result: AssessmentResponse,
+): AssessmentCreate {
   return {
     crop: "maize",
     rainfall_mm: result.inputs.rainfall.value,

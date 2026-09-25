@@ -17,6 +17,7 @@ from backend.schemas import (
 from mundasense.constants import APP_VERSION
 from mundasense.i18n.translator import Translator
 from mundasense.schemas import AssessmentResult, DataWarning
+from mundasense.storage.assessment_repository import risk_score_for_yield
 
 FEATURE_KEYS = {
     "rainfall_mm": "field.rainfall",
@@ -135,6 +136,7 @@ def serialize_result(
             range_low_t_ha=result.interval_lower_t_ha,
             range_high_t_ha=result.interval_upper_t_ha,
             risk_band=result.risk_code,
+            risk_score=risk_score_for_yield(result.predicted_yield_t_ha),
             risk_label=translator.t(f"risk.{result.risk_code}", selected_locale),
             risk_explanation=translator.t(result.risk_explanation_key, selected_locale),
             confidence=Confidence(
@@ -160,7 +162,13 @@ def serialize_result(
     )
 
 
-def history_item(result: AssessmentResult, translator: Translator) -> HistoryItem:
+def history_item(
+    result: AssessmentResult,
+    translator: Translator,
+    *,
+    sync_status: str = "synchronized",
+    archived: bool = False,
+) -> HistoryItem:
     serialized = serialize_result(result, translator, "en")
     top_warning = serialized.warnings[0].message if serialized.warnings else None
     return HistoryItem(
@@ -176,4 +184,6 @@ def history_item(result: AssessmentResult, translator: Translator) -> HistoryIte
         source=result.validated_inputs.source,
         model_version=result.model_version,
         top_warning=top_warning,
+        sync_status=sync_status,
+        archived=archived,
     )

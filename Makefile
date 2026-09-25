@@ -1,11 +1,14 @@
 PYTHON ?= python
 
-.PHONY: install train evaluate test frontend-test frontend-build lint run dev api verify seed
+.PHONY: install migrate train evaluate test frontend-test frontend-build frontend-lint lint run dev api verify seed docker-up
 
 install:
 	$(PYTHON) -m pip install -r requirements-lock.txt
 	$(PYTHON) -m pip install -e . --no-deps --no-build-isolation
 	cd frontend && npm install
+
+migrate:
+	$(PYTHON) -m alembic upgrade head
 
 train:
 	$(PYTHON) scripts/train_model.py --regenerate-data
@@ -22,6 +25,9 @@ frontend-test:
 
 frontend-build:
 	cd frontend && npm run build
+
+frontend-lint:
+	cd frontend && npm run lint
 
 lint:
 	$(PYTHON) -m ruff check .
@@ -41,3 +47,6 @@ verify:
 
 seed:
 	$(PYTHON) scripts/seed_demo.py
+
+docker-up:
+	docker compose up --build

@@ -1,0 +1,50 @@
+{
+  "name": "MundaSense AI",
+  "short_name": "MundaSense",
+  "description": "Offline-first, explainable maize yield-risk decision support for Zimbabwean farmers and extension officers.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F5F7F3",
+  "theme_color": "#0D4F3C",
+  "lang": "en",
+  "categories": ["agriculture", "productivity", "education"],
+  "icons": [
+    {
+      "src": "/mundasense-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/mundasense_logo.png",
+      "sizes": "2172x724",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New assessment",
+      "url": "/assess/new",
+      "icons": [
+        {
+          "src": "/mundasense-mark.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "url": "/dashboard",
+      "icons": [
+        {
+          "src": "/mundasense-mark.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    }
+  ]
+}

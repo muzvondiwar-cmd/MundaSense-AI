@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-APP_VERSION = "0.1.0"
+APP_VERSION = "0.2.0"
 MODEL_BUNDLE_SCHEMA_VERSION = "1.0"
 MODEL_VERSION = "demo-2026.08-v1"
 RISK_POLICY_VERSION = "risk-demo-v1"

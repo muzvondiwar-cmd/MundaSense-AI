@@ -1,0 +1,19 @@
+{
+  "name": "mundasense-ai-workspace",
+  "private": true,
+  "version": "0.2.0",
+  "scripts": {
+    "dev": "python scripts/dev.py",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "test": "python -m pytest && npm --prefix frontend test",
+    "lint": "python -m ruff check . && python -m ruff format --check .",
+    "db:migrate": "python -m alembic upgrade head",
+    "seed": "python scripts/seed_demo.py",
+    "model:train": "python scripts/train_model.py --regenerate-data"
+  },
+  "engines": {
+    "node": ">=20",
+    "npm": ">=10"
+  }
+}

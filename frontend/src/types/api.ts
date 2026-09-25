@@ -16,6 +16,17 @@ export interface AssessmentCreate {
   farm_reference: string;
   language: Locale;
   source: Source;
+  field_id?: string | null;
+  province?: string;
+  ward?: string;
+  planting_date?: string | null;
+  maize_variety?: string;
+  growth_stage?: string;
+  field_size_hectares?: number | null;
+  fertilizer_type?: string;
+  irrigation_available?: boolean | null;
+  crop_stress_observations?: string;
+  idempotency_key?: string;
 }
 
 export interface InputValue {
@@ -46,6 +57,7 @@ export interface AssessmentResponse {
     range_low_t_ha: number;
     range_high_t_ha: number;
     risk_band: RiskBand;
+    risk_score: number;
     risk_label: string;
     risk_explanation: string;
     confidence: {
@@ -78,7 +90,11 @@ export interface AssessmentResponse {
     reason: string;
     referral_required: boolean;
     referral_message: string | null;
-    supporting_actions: Array<{ title: string; message: string; rule_id: string }>;
+    supporting_actions: Array<{
+      title: string;
+      message: string;
+      rule_id: string;
+    }>;
   };
   versions: { model: string; risk_policy: string; rules: string; app: string };
   data_status: DataStatus;
@@ -101,6 +117,8 @@ export interface HistoryItem {
   source: Source;
   model_version: string;
   top_warning: string | null;
+  sync_status: SyncStatus;
+  archived: boolean;
 }
 
 export interface HistoryResponse {
@@ -112,7 +130,11 @@ export interface HistoryResponse {
 export interface FeatureConfig {
   key: keyof Pick<
     AssessmentCreate,
-    "rainfall_mm" | "fertilizer_kg_ha" | "temperature_c" | "humidity_pct" | "soil_ph"
+    | "rainfall_mm"
+    | "fertilizer_kg_ha"
+    | "temperature_c"
+    | "humidity_pct"
+    | "soil_ph"
   >;
   label: string;
   unit: string;
@@ -167,16 +189,30 @@ export interface DashboardResponse {
     average_predicted_yield_t_ha: number | null;
     low_confidence_assessments: number;
     referrals_required: number;
+    assessments_this_season: number;
+    awaiting_synchronization: number;
   };
   assessments_over_time: Array<{ label: string; count: number }>;
+  yield_over_time: Array<{
+    label: string;
+    average_yield_t_ha: number;
+    sample_size: number;
+  }>;
   risk_distribution: Array<{ label: string; count: number }>;
   confidence_distribution: Array<{ label: string; count: number }>;
   frequent_drivers: Array<{ label: string; count: number }>;
-  yield_by_district: Array<{ label: string; average_yield_t_ha: number; sample_size: number }>;
+  yield_by_district: Array<{
+    label: string;
+    average_yield_t_ha: number;
+    sample_size: number;
+  }>;
   priority_cases: HistoryItem[];
   contains_synthetic_demo: boolean;
   small_sample: boolean;
   active_filters: Record<string, string | boolean | null>;
+  model_version: string;
+  recent_assessments: HistoryItem[];
+  data_quality_alerts: HistoryItem[];
 }
 
 export interface ModelCardResponse {
@@ -190,4 +226,91 @@ export interface ModelCardResponse {
   features: FeatureConfig[];
   limitations: string[];
   training_ranges: Record<string, Record<string, number>>;
+}
+
+export type SyncStatus = "pending" | "synchronized" | "failed";
+
+export interface FarmCreate {
+  id?: string;
+  name: string;
+  contact_name: string;
+  province: string;
+  district: string;
+  ward: string;
+  latitude: number | null;
+  longitude: number | null;
+  notes: string;
+  sync_status?: SyncStatus;
+  is_demo?: boolean;
+}
+
+export interface Farm extends FarmCreate {
+  id: string;
+  sync_status: SyncStatus;
+  is_demo: boolean;
+  created_at: string;
+  updated_at: string;
+  field_count: number;
+}
+
+export interface FieldCreate {
+  id?: string;
+  farm_id: string;
+  name: string;
+  size_hectares: number;
+  maize_variety: string;
+  planting_date: string | null;
+  season: string;
+  target_yield_t_ha: number | null;
+  notes: string;
+  sync_status?: SyncStatus;
+  is_demo?: boolean;
+}
+
+export interface Field extends FieldCreate {
+  id: string;
+  sync_status: SyncStatus;
+  is_demo: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InsightPoint {
+  label: string;
+  value: number;
+  sample_size: number | null;
+}
+
+export interface InsightsResponse {
+  yield_over_time: InsightPoint[];
+  risk_distribution: InsightPoint[];
+  risk_by_district: InsightPoint[];
+  average_inputs: Record<string, number>;
+  common_risk_drivers: InsightPoint[];
+  data_completeness_pct: number;
+  unusual_records: number;
+  model_versions: InsightPoint[];
+  total_records: number;
+  contains_demo_data: boolean;
+}
+
+export interface SyncBatchRequest {
+  items: Array<{
+    entity_type: "assessment" | "farm" | "field";
+    idempotency_key: string;
+    payload: Record<string, unknown>;
+  }>;
+}
+
+export interface SyncBatchResponse {
+  items: Array<{
+    idempotency_key: string;
+    entity_type: string;
+    entity_id: string;
+    status: "synchronized" | "failed";
+    duplicate: boolean;
+    error: string | null;
+  }>;
+  synchronized: number;
+  failed: number;
 }

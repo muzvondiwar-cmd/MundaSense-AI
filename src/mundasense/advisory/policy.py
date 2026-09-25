@@ -6,7 +6,7 @@ from mundasense.constants import RISK_POLICY_VERSION
 from mundasense.schemas import ConfidenceCode, DataWarning, RiskCode
 
 HIGH_RISK_BELOW_T_HA = 2.0
-MODERATE_RISK_BELOW_T_HA = 3.5
+MODERATE_RISK_BELOW_T_HA = 3.0
 
 
 def classify_risk(predicted_yield_t_ha: float) -> tuple[RiskCode, str, str]:

@@ -36,7 +36,7 @@
   "result.warnings": "Input and model warnings",
   "result.referral": "Extension support recommended",
   "result.referral_body": "This result should be reviewed with an agricultural extension officer because the risk, confidence, or data warnings exceed the demonstration safety threshold.",
-  "result.disclaimer": "Decision support only. This estimate is not a guarantee and does not replace field inspection or qualified agronomic advice.",
+  "result.disclaimer": "MundaSense AI provides decision-support estimates. Results are not a guaranteed harvest forecast and should be reviewed alongside field observations and qualified agronomic advice.",
   "driver.increased": "The model associated this value with a higher estimate than its demonstration reference.",
   "driver.decreased": "The model associated this value with a lower estimate than its demonstration reference.",
   "driver.neutral": "This value had little effect relative to its demonstration reference.",
@@ -62,4 +62,3 @@
   "health.ready": "Ready",
   "health.not_ready": "Needs attention"
 }
-

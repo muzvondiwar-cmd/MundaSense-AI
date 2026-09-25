@@ -6,10 +6,15 @@ import json
 from dataclasses import asdict
 from datetime import date
 from typing import Any
+from uuid import uuid4
 
+from sqlalchemy import delete, func, select
+
+from mundasense.advisory.policy import HIGH_RISK_BELOW_T_HA, MODERATE_RISK_BELOW_T_HA
 from mundasense.constants import APP_VERSION
 from mundasense.schemas import AssessmentRequest, AssessmentResult
 from mundasense.storage.database import Database
+from mundasense.storage.models import AssessmentRecord, PredictionRecord
 
 
 def neutralise_formula(value: Any) -> Any:
@@ -18,48 +23,98 @@ def neutralise_formula(value: Any) -> Any:
     return value
 
 
+def risk_score_for_yield(predicted_yield_t_ha: float) -> float:
+    """Map provisional yield thresholds to a transparent 0-100 concern score."""
+    if predicted_yield_t_ha <= HIGH_RISK_BELOW_T_HA:
+        score = 70 + 30 * (HIGH_RISK_BELOW_T_HA - predicted_yield_t_ha) / HIGH_RISK_BELOW_T_HA
+    elif predicted_yield_t_ha < MODERATE_RISK_BELOW_T_HA:
+        width = MODERATE_RISK_BELOW_T_HA - HIGH_RISK_BELOW_T_HA
+        score = 40 + 30 * (MODERATE_RISK_BELOW_T_HA - predicted_yield_t_ha) / width
+    else:
+        score = 40 * max(0.0, 1 - (predicted_yield_t_ha - MODERATE_RISK_BELOW_T_HA) / 3.5)
+    return round(min(100.0, max(0.0, score)), 1)
+
+
 class AssessmentRepository:
     def __init__(self, database: Database):
         self.database = database
         self.database.initialise()
 
-    def save(self, result: AssessmentResult) -> None:
+    def save(
+        self,
+        result: AssessmentResult,
+        *,
+        idempotency_key: str | None = None,
+        field_id: str | None = None,
+        sync_status: str = "synchronized",
+    ) -> AssessmentResult:
+        if idempotency_key:
+            existing = self.get_by_idempotency_key(idempotency_key)
+            if existing:
+                return existing
         payload = result.to_dict()
         inputs = result.validated_inputs.to_dict()
-        values = (
-            result.assessment_id,
-            result.created_at,
-            inputs["crop"],
-            inputs["district"],
-            inputs["farm_reference"],
-            json.dumps(inputs, ensure_ascii=False, sort_keys=True),
-            result.predicted_yield_t_ha,
-            result.interval_lower_t_ha,
-            result.interval_upper_t_ha,
-            result.risk_code,
-            result.confidence_code,
-            json.dumps([asdict(item) for item in result.data_warnings], ensure_ascii=False),
-            json.dumps([asdict(item) for item in result.top_drivers], ensure_ascii=False),
-            json.dumps([asdict(item) for item in result.advisories], ensure_ascii=False),
-            int(result.referral_required),
-            result.model_version,
-            result.rules_version,
-            int(result.is_synthetic_model),
-            APP_VERSION,
-            json.dumps(payload, ensure_ascii=False, sort_keys=True),
-        )
-        sql = """
-        INSERT INTO assessments (
-            id, created_at, crop, district, farm_reference, inputs_json,
-            predicted_yield_t_ha, interval_lower_t_ha, interval_upper_t_ha,
-            risk_code, confidence_code, warnings_json, drivers_json, advisories_json,
-            referral_required, model_version, rules_version, is_synthetic_model,
-            app_version, result_json
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """
-        with self.database.connect() as connection:
-            connection.execute(sql, values)
-            connection.commit()
+        with self.database.session() as session:
+            session.add(
+                AssessmentRecord(
+                    id=result.assessment_id,
+                    created_at=result.created_at,
+                    updated_at=result.created_at,
+                    crop=inputs["crop"],
+                    district=inputs["district"],
+                    farm_reference=inputs["farm_reference"],
+                    inputs_json=json.dumps(inputs, ensure_ascii=False, sort_keys=True),
+                    predicted_yield_t_ha=result.predicted_yield_t_ha,
+                    interval_lower_t_ha=result.interval_lower_t_ha,
+                    interval_upper_t_ha=result.interval_upper_t_ha,
+                    risk_code=result.risk_code,
+                    confidence_code=result.confidence_code,
+                    warnings_json=json.dumps(
+                        [asdict(item) for item in result.data_warnings], ensure_ascii=False
+                    ),
+                    drivers_json=json.dumps(
+                        [asdict(item) for item in result.top_drivers], ensure_ascii=False
+                    ),
+                    advisories_json=json.dumps(
+                        [asdict(item) for item in result.advisories], ensure_ascii=False
+                    ),
+                    referral_required=result.referral_required,
+                    model_version=result.model_version,
+                    rules_version=result.rules_version,
+                    is_synthetic_model=result.is_synthetic_model,
+                    app_version=APP_VERSION,
+                    result_json=json.dumps(payload, ensure_ascii=False, sort_keys=True),
+                    sync_status=sync_status,
+                    idempotency_key=idempotency_key,
+                    archived=False,
+                    field_id=field_id,
+                )
+            )
+            session.add(
+                PredictionRecord(
+                    id=str(uuid4()),
+                    assessment_id=result.assessment_id,
+                    prediction_timestamp=result.created_at,
+                    predicted_yield_t_ha=result.predicted_yield_t_ha,
+                    lower_yield_t_ha=result.interval_lower_t_ha,
+                    upper_yield_t_ha=result.interval_upper_t_ha,
+                    risk_score=risk_score_for_yield(result.predicted_yield_t_ha),
+                    risk_level=result.risk_code,
+                    confidence=result.confidence_code,
+                    drivers_json=json.dumps(
+                        [asdict(item) for item in result.top_drivers], ensure_ascii=False
+                    ),
+                    warnings_json=json.dumps(
+                        [asdict(item) for item in result.data_warnings], ensure_ascii=False
+                    ),
+                    recommendations_json=json.dumps(
+                        [asdict(item) for item in result.advisories], ensure_ascii=False
+                    ),
+                    model_version=result.model_version,
+                    is_demo_model=result.is_synthetic_model,
+                )
+            )
+        return result
 
     @staticmethod
     def _hydrate(payload: dict[str, Any]) -> AssessmentResult:
@@ -76,13 +131,18 @@ class AssessmentRepository:
         )
 
     def get(self, assessment_id: str) -> AssessmentResult | None:
-        with self.database.connect() as connection:
-            row = connection.execute(
-                "SELECT result_json FROM assessments WHERE id = ?", (assessment_id,)
-            ).fetchone()
-        if row is None:
-            return None
-        return self._hydrate(json.loads(row["result_json"]))
+        with self.database.session() as session:
+            payload = session.scalar(
+                select(AssessmentRecord.result_json).where(AssessmentRecord.id == assessment_id)
+            )
+        return self._hydrate(json.loads(payload)) if payload else None
+
+    def get_by_idempotency_key(self, key: str) -> AssessmentResult | None:
+        with self.database.session() as session:
+            payload = session.scalar(
+                select(AssessmentRecord.result_json).where(AssessmentRecord.idempotency_key == key)
+            )
+        return self._hydrate(json.loads(payload)) if payload else None
 
     def list(
         self,
@@ -92,54 +152,97 @@ class AssessmentRepository:
         district: str | None = None,
         from_date: date | None = None,
         to_date: date | None = None,
+        sync_status: str | None = None,
+        include_archived: bool = False,
         limit: int = 500,
     ) -> list[dict[str, Any]]:
-        clauses: list[str] = []
-        params: list[Any] = []
+        statement = select(AssessmentRecord)
+        if not include_archived:
+            statement = statement.where(AssessmentRecord.archived.is_(False))
         if risk:
-            clauses.append("risk_code = ?")
-            params.append(risk)
+            statement = statement.where(AssessmentRecord.risk_code == risk)
         if confidence:
-            clauses.append("confidence_code = ?")
-            params.append(confidence)
+            statement = statement.where(AssessmentRecord.confidence_code == confidence)
         if district:
-            clauses.append("district = ?")
-            params.append(district)
+            statement = statement.where(AssessmentRecord.district == district)
         if from_date:
-            clauses.append("date(created_at) >= date(?)")
-            params.append(from_date.isoformat())
+            statement = statement.where(
+                func.date(AssessmentRecord.created_at) >= from_date.isoformat()
+            )
         if to_date:
-            clauses.append("date(created_at) <= date(?)")
-            params.append(to_date.isoformat())
-        where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
-        sql = f"""SELECT id, created_at, district, farm_reference,
-            predicted_yield_t_ha, interval_lower_t_ha, interval_upper_t_ha,
-            risk_code, confidence_code, referral_required, model_version,
-            is_synthetic_model FROM assessments {where}
-            ORDER BY created_at DESC LIMIT ?"""
-        params.append(min(max(limit, 1), 2_000))
-        with self.database.connect() as connection:
-            return [dict(row) for row in connection.execute(sql, params).fetchall()]
+            statement = statement.where(
+                func.date(AssessmentRecord.created_at) <= to_date.isoformat()
+            )
+        if sync_status:
+            statement = statement.where(AssessmentRecord.sync_status == sync_status)
+        statement = statement.order_by(AssessmentRecord.created_at.desc()).limit(
+            min(max(limit, 1), 2_000)
+        )
+        with self.database.session() as session:
+            rows = session.scalars(statement).all()
+            return [
+                {
+                    "id": row.id,
+                    "created_at": row.created_at,
+                    "updated_at": row.updated_at,
+                    "district": row.district,
+                    "farm_reference": row.farm_reference,
+                    "predicted_yield_t_ha": row.predicted_yield_t_ha,
+                    "interval_lower_t_ha": row.interval_lower_t_ha,
+                    "interval_upper_t_ha": row.interval_upper_t_ha,
+                    "risk_code": row.risk_code,
+                    "confidence_code": row.confidence_code,
+                    "referral_required": row.referral_required,
+                    "model_version": row.model_version,
+                    "is_synthetic_model": row.is_synthetic_model,
+                    "sync_status": row.sync_status,
+                    "archived": row.archived,
+                    "field_id": row.field_id,
+                }
+                for row in rows
+            ]
+
+    def archive(self, assessment_id: str) -> bool:
+        with self.database.session() as session:
+            record = session.get(AssessmentRecord, assessment_id)
+            if not record:
+                return False
+            record.archived = True
+            record.updated_at = record.created_at
+            return True
 
     def delete(self, assessment_id: str) -> bool:
-        with self.database.connect() as connection:
-            cursor = connection.execute("DELETE FROM assessments WHERE id = ?", (assessment_id,))
-            connection.commit()
-            return cursor.rowcount == 1
+        with self.database.session() as session:
+            record = session.get(AssessmentRecord, assessment_id)
+            if not record:
+                return False
+            session.delete(record)
+            return True
+
+    def delete_demo_records(self) -> int:
+        with self.database.session() as session:
+            records = session.scalars(select(AssessmentRecord)).all()
+            demo_records = [
+                record
+                for record in records
+                if json.loads(record.inputs_json).get("source") in {"demo", "scenario"}
+            ]
+            ids = [record.id for record in demo_records]
+            if ids:
+                session.execute(
+                    delete(PredictionRecord).where(PredictionRecord.assessment_id.in_(ids))
+                )
+                session.execute(delete(AssessmentRecord).where(AssessmentRecord.id.in_(ids)))
+            return len(demo_records)
 
     def export_csv(self, assessment_ids: list[str] | None = None) -> str:
-        sql = "SELECT result_json FROM assessments"
-        params: list[Any] = []
+        statement = select(AssessmentRecord.result_json).order_by(
+            AssessmentRecord.created_at.desc()
+        )
         if assessment_ids is not None:
-            if assessment_ids:
-                placeholders = ",".join("?" for _ in assessment_ids)
-                sql += f" WHERE id IN ({placeholders})"
-                params.extend(assessment_ids)
-            else:
-                sql += " WHERE 1 = 0"
-        sql += " ORDER BY created_at DESC"
-        with self.database.connect() as connection:
-            payloads = [json.loads(row["result_json"]) for row in connection.execute(sql, params)]
+            statement = statement.where(AssessmentRecord.id.in_(assessment_ids or ["__none__"]))
+        with self.database.session() as session:
+            payloads = [json.loads(value) for value in session.scalars(statement).all()]
         columns = [
             "assessment_id",
             "created_at",

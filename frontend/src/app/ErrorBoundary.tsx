@@ -2,7 +2,10 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
 
 import { Alert, Button, Card } from "../components/ui";
 
-export class ErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+export class ErrorBoundary extends Component<
+  { children: ReactNode },
+  { failed: boolean }
+> {
   state = { failed: false };
 
   static getDerivedStateFromError() {
@@ -19,9 +22,12 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { failed: 
       <main className="grid min-h-screen place-items-center bg-pale p-5">
         <Card className="max-w-xl p-6">
           <Alert tone="critical" title="This page could not be displayed">
-            Your saved records have not been changed. Refresh the local interface or return home.
+            Your saved records have not been changed. Refresh the local
+            interface or return home.
           </Alert>
-          <Button className="mt-5" onClick={() => window.location.assign("/")}>Return home</Button>
+          <Button className="mt-5" onClick={() => window.location.assign("/")}>
+            Return home
+          </Button>
         </Card>
       </main>
     );

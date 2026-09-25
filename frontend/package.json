@@ -1,11 +1,13 @@
 {
   "name": "mundasense-frontend",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc -b && vite build",
+    "lint": "tsc -b --pretty false && prettier --check \"src/**/*.{ts,tsx,css}\" \"*.{json,html,ts}\" \"public/*.{js,json,webmanifest}\"",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"*.{json,html,ts}\" \"public/*.{js,json,webmanifest}\"",
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run",
     "test:watch": "vitest"
@@ -13,6 +15,7 @@
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
     "@tanstack/react-query": "^5.103.2",
+    "dexie": "^4.2.1",
     "lucide-react": "^1.47.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
@@ -30,6 +33,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
     "jsdom": "^29.1.1",
+    "prettier": "^3.6.2",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
     "vite": "^8.3.0",

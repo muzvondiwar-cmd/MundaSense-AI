@@ -1,0 +1,33 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      MUNDASENSE_DATABASE_PATH: /app/data/local/mundasense.sqlite3
+      MUNDASENSE_MODEL_PATH: /app/models/mundasense_demo_v1.joblib
+      MUNDASENSE_CORS_ORIGINS: http://localhost:8080,http://127.0.0.1:8080
+      MUNDASENSE_LOG_LEVEL: INFO
+    volumes:
+      - mundasense-data:/app/data/local
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  frontend:
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "8080:80"
+
+volumes:
+  mundasense-data:

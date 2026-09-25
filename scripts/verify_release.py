@@ -25,10 +25,15 @@ REQUIRED_FILES = [
     "reports/metrics/evaluation.json",
     "reports/figures/actual_vs_predicted.png",
     "reports/figures/residuals.png",
-    "docs/architecture.md",
+    "docs/ARCHITECTURE.md",
+    "docs/API.md",
+    "docs/DEMO_GUIDE.md",
+    "docs/OFFLINE_SYNC.md",
+    "docs/USER_GUIDE.md",
+    "docs/HACKATHON_PITCH_NOTES.md",
     "docs/data_dictionary.md",
     "docs/data_sheet.md",
-    "docs/model_card.md",
+    "docs/MODEL_CARD.md",
     "docs/advisory_rules.md",
     "docs/responsible_ai.md",
     "docs/testing.md",
@@ -36,6 +41,9 @@ REQUIRED_FILES = [
     "docs/threat_model.md",
     "docs/limitations.md",
     "docs/operational_notes.md",
+    "docker-compose.yml",
+    "alembic.ini",
+    "frontend/public/manifest.webmanifest",
 ]
 
 CRITICAL_TRANSLATION_KEYS = {

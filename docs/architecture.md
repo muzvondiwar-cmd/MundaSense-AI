@@ -1,83 +1,104 @@
-# Architecture
+# MundaSense AI architecture
 
-## Decision
+## Architectural decision
 
-MundaSense AI is a local modular monolith with two presentation adapters. The primary adapter is a
-React single-page application using a small FastAPI transport layer. The original Streamlit UI is
-retained as a legacy diagnostic adapter. Neither owns statistical, safety, advisory, or persistence
-logic.
+MundaSense AI is an offline-first modular monolith. React owns interaction and local browser state;
+FastAPI owns transport and server validation; framework-independent Python modules own prediction,
+uncertainty, explanations, safety policy and cautious recommendations. The existing Streamlit UI is
+retained only as a diagnostic adapter.
 
 ```text
-Browser
-  React Router + TanStack Query + React Hook Form + Recharts
-                   |
-              typed JSON API
-                   |
-FastAPI: validation, serialisation, filters, report rendering
-                   |
-AssessmentService
-  |-- feature-contract validation
-  |-- trusted model -> prediction -> residual interval
-  |-- unusual-input detector -> risk/confidence policy
-  |-- approximate local explanation
-  |-- versioned YAML advisory rules
-  `-- SQLite immutable snapshot repository -> safe CSV
+React + TypeScript + Vite + Tailwind
+  |-- React Router / TanStack Query / React Hook Form / Zod
+  |-- Recharts / Lucide / accessible responsive components
+  |-- service worker + web manifest
+  `-- Dexie IndexedDB
+       |-- assessment drafts
+       |-- pending/failed synchronization queue
+       `-- cached completed results
+                    |
+              /api/v1 JSON
+                    |
+FastAPI + Pydantic + predictable error envelopes
+  |-- farms and fields
+  |-- assessments and predictions
+  |-- dashboard and insights
+  |-- idempotent synchronization
+  `-- printable/CSV compatibility routes
+                    |
+AssessmentService (framework independent)
+  |-- hard validation and model feature order
+  |-- checksum-verified scikit-learn pipeline
+  |-- residual-calibrated interval
+  |-- unfamiliar-input checks and confidence policy
+  |-- local approximate explanations
+  `-- versioned YAML advisory rules
+                    |
+SQLAlchemy 2 repository + Alembic -> SQLite
+  |-- farms / fields / assessments / prediction_results
+  |-- model_metadata / sync_events / app_settings
+  `-- complete immutable result snapshots
 ```
 
-The Vite development server proxies `/api` to `127.0.0.1:8000`. A production frontend build is
-served by FastAPI with SPA route fallback. Route components are lazy-loaded, so dashboard charting
-code is not part of the initial page chunk.
+## Key decisions
 
-## Boundaries
+1. **Preserve the trusted model bundle.** The existing `demo-2026.08-v1` bundle remains the only
+   inference artifact. It is loaded only from the trusted `models/` directory after SHA-256
+   verification. It is never retrained during application startup.
+2. **Version the public API.** New clients use `/api/v1`. Existing `/api` endpoints remain as a
+   compatibility surface for printable reports, CSV exports and existing tests/bookmarks.
+3. **Keep prediction logic out of HTTP handlers.** FastAPI maps validated transport objects to
+   `AssessmentService`; scenario comparison calls the same service with `persist=False`.
+4. **Persist complete snapshots.** Every assessment keeps original validated model inputs, submitted
+   field context, model output, interval, risk, confidence, explanations, warnings,
+   recommendations, versions and data provenance. A later model upgrade cannot rewrite history.
+5. **Use SQLAlchemy now, retain a PostgreSQL path.** SQLite is the default hackathon store. The
+   `Database` boundary accepts a SQLAlchemy URL through `MUNDASENSE_DATABASE_URL`; no domain code is
+   SQLite-specific. PostgreSQL still requires a production driver and deployment testing.
+6. **Never fake an offline prediction.** When FastAPI is unavailable, the form is saved to Dexie with
+   a UUID idempotency key and shown as `Saved offline—prediction pending`. The backend performs the
+   real prediction after synchronization.
+7. **Keep advice deterministic and guarded.** Versioned rules may suggest verification, inspection,
+   soil testing or extension review. They do not prescribe fertiliser or pesticide doses.
 
-- `frontend/` owns interaction, responsive layout, URL filters, local interface preferences, and
-  human-readable visualisation. It does not reproduce model or advisory decisions.
-- `backend/` maps HTTP payloads to domain requests and stable response schemas. It aggregates stored
-  records for dashboards and escapes printable report output.
-- `src/mundasense/schemas.py` defines framework-independent contracts.
-- `validation.py` enforces maize scope, five numeric fields, units, text bounds, language, and
-  provenance source.
-- `ml/` owns feature order, candidate training, grouped splits, uncertainty, explanations, drift
-  checks, and bundle integrity.
-- `advisory/` is versioned independently from the model; a model update cannot silently change
-  advice.
-- `storage/` persists complete immutable snapshots and neutralises spreadsheet formulas.
-- `i18n/` validates Python catalogues and falls back to English. The React demonstration dictionary
-  applies the same fallback rule for shell copy.
+## Offline and synchronization flow
 
-## Assessment and scenario flow
+1. Form changes are debounced into `drafts` in IndexedDB.
+2. A normal online submission sends an `Idempotency-Key` to `/api/v1/assessments`.
+3. A failed/unavailable backend submission is added to `queue`; no result is generated locally.
+4. Online events, a 30-second retry loop or **Sync now** call `/api/v1/sync/batch`.
+5. The backend records a unique `sync_events.idempotency_key` and associates the same key with the
+   assessment. A repeated batch returns the original entity ID.
+6. Successful queue items are removed. Failed items retain the input and retry with capped
+   exponential backoff.
+7. UUIDs are client-generated for farms and fields. Existing IDs win; timestamps and immutable
+   assessment semantics prevent silent overwrites.
 
-1. The React form validates for immediate accessible feedback.
-2. FastAPI/Pydantic rejects unexpected fields, impossible values, oversized text, and oversized
-   bodies.
-3. `AssessmentService` revalidates and runs the checksum-verified local bundle.
-4. It produces a non-negative calibrated range, warnings, provisional risk/confidence, three local
-   drivers, deterministic advice, and referral state.
-5. A normal assessment is saved as one immutable SQLite snapshot.
-6. A scenario uses the same service with changed numeric values and `persist=False`; only an
-   explicit save creates a new `source=scenario`, `data_status=synthetic_demo` snapshot.
+See [OFFLINE_SYNC.md](OFFLINE_SYNC.md) for operational and conflict detail.
 
-## Dashboard and reporting
+## Security and trust boundaries
 
-Dashboard summaries are computed only from stored snapshots matching explicit server-side filters.
-The API returns counts, average central estimates, distributions, common top drivers, district
-aggregates with sample sizes, and a transparent priority ordering. Empty and small samples remain
-visible rather than being hidden. CSV export applies the same filters. Printable Field Health
-Passports are server-rendered, escaped, local-only documents with inputs, versions, warnings,
-advice, referral, data status, and disclaimers.
+- Browser data and text are untrusted and validated again with Pydantic/domain rules.
+- Request bodies are capped; CORS uses configured exact origins.
+- SQLAlchemy parameterizes database operations.
+- Printable reports HTML-escape stored text; CSV output neutralizes spreadsheet formulas.
+- Joblib can execute code, so only checksum-verified local bundles are loaded.
+- No account, analytics tracker, cloud inference or real secret is required.
+- Unhandled exceptions are logged locally; versioned API validation and HTTP errors return stable
+  envelopes without stack traces.
 
-## Trust and offline boundaries
+## Deployment modes
 
-- Browser and entered text are untrusted; validation occurs before inference and storage.
-- Joblib is code-capable. Only the configured file below `models/` is accepted and its SHA-256
-  sidecar must match.
-- SQL uses parameters. Report values are HTML-escaped. Formula-leading CSV cells receive a safe
-  apostrophe.
-- CORS permits only configured exact origins; the default list contains local Vite/preview origins.
-- The service worker caches static shell files only. Live API state is never silently replaced by a
-  cached response, and a waiting release activates only after the user accepts the update banner.
-- Core operation requires no network after packages are installed. Weather, satellite, sync,
-  messaging, and cloud analytics remain out of scope.
+- **Development:** Vite on port 5173 proxies API requests to FastAPI on port 8000.
+- **Single process:** build `frontend/dist`; FastAPI serves the SPA and API on port 8000.
+- **Docker Compose:** nginx serves the PWA on port 8080 and proxies to FastAPI; SQLite lives in a
+  named volume.
+- **Local network:** bind FastAPI/nginx to the host network and open the local firewall deliberately;
+  all core functions continue without internet after installation.
 
-Crop expansion requires a separate data contract, model, risk policy, and reviewed advisory package;
-the maize policy must not be relabelled for another crop.
+## Known architectural limits
+
+The service has no user authentication, multi-tenant authorization, encrypted database, background
+worker, real weather feed or merge UI. These are deliberate hackathon limits. A managed pilot needs
+role-based access, encrypted backup, audit review, PostgreSQL migration rehearsal and supervised
+field validation.

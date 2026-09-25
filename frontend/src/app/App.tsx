@@ -14,9 +14,15 @@ const HistoryPage = lazy(() => import("../pages/HistoryPage"));
 const CaseDetailPage = lazy(() => import("../pages/CaseDetailPage"));
 const ModelPage = lazy(() => import("../pages/ModelPage"));
 const AboutPage = lazy(() => import("../pages/AboutPage"));
+const FarmsPage = lazy(() => import("../pages/FarmsPage"));
+const InsightsPage = lazy(() => import("../pages/InsightsPage"));
+const SettingsPage = lazy(() => import("../pages/SettingsPage"));
+const OfflinePendingPage = lazy(() => import("../pages/OfflinePendingPage"));
 const NotFoundPage = lazy(() => import("../pages/NotFoundPage"));
 
-const withSuspense = (element: React.ReactNode) => <Suspense fallback={<PageSkeleton />}>{element}</Suspense>;
+const withSuspense = (element: React.ReactNode) => (
+  <Suspense fallback={<PageSkeleton />}>{element}</Suspense>
+);
 
 const router = createBrowserRouter([
   {
@@ -31,11 +37,22 @@ const router = createBrowserRouter([
       { path: "/history/:id", element: withSuspense(<CaseDetailPage />) },
       { path: "/model", element: withSuspense(<ModelPage />) },
       { path: "/about", element: withSuspense(<AboutPage />) },
+      { path: "/farms", element: withSuspense(<FarmsPage />) },
+      { path: "/insights", element: withSuspense(<InsightsPage />) },
+      { path: "/settings", element: withSuspense(<SettingsPage />) },
+      {
+        path: "/offline/pending/:id",
+        element: withSuspense(<OfflinePendingPage />),
+      },
       { path: "*", element: withSuspense(<NotFoundPage />) },
     ],
   },
 ]);
 
 export function App() {
-  return <ErrorBoundary><RouterProvider router={router} /></ErrorBoundary>;
+  return (
+    <ErrorBoundary>
+      <RouterProvider router={router} />
+    </ErrorBoundary>
+  );
 }

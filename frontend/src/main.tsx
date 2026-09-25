@@ -3,6 +3,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { App } from "./app/App";
+import { OfflineSyncProvider } from "./app/OfflineSync";
 import { PreferencesProvider } from "./app/Preferences";
 import { ToastProvider } from "./components/Toast";
 import "./styles/index.css";
@@ -19,7 +20,9 @@ createRoot(document.getElementById("root")!).render(
     <QueryClientProvider client={queryClient}>
       <PreferencesProvider>
         <ToastProvider>
-          <App />
+          <OfflineSyncProvider>
+            <App />
+          </OfflineSyncProvider>
         </ToastProvider>
       </PreferencesProvider>
     </QueryClientProvider>

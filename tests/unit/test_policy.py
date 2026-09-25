@@ -7,8 +7,8 @@ from mundasense.schemas import DataWarning
 def test_risk_threshold_edges_are_transparent() -> None:
     assert classify_risk(1.999)[0] == "high"
     assert classify_risk(2.0)[0] == "moderate"
-    assert classify_risk(3.499)[0] == "moderate"
-    assert classify_risk(3.5)[0] == "low"
+    assert classify_risk(2.999)[0] == "moderate"
+    assert classify_risk(3.0)[0] == "low"
 
 
 def test_confidence_uses_interval_width() -> None:

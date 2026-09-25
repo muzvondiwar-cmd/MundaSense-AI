@@ -6,6 +6,7 @@ $python = Join-Path $PSScriptRoot '..\.venv\Scripts\python.exe'
 & $python scripts\verify_release.py
 Push-Location (Join-Path $PSScriptRoot '..\frontend')
 try {
+    npm run lint
     npm test
     npm run build
 }

@@ -65,6 +65,7 @@ class Prediction(BaseModel):
     range_low_t_ha: float
     range_high_t_ha: float
     risk_band: RiskBand
+    risk_score: float = Field(ge=0, le=100)
     risk_label: str
     risk_explanation: str
     confidence: Confidence
@@ -142,6 +143,8 @@ class HistoryItem(BaseModel):
     source: Source
     model_version: str
     top_warning: str | None
+    sync_status: Literal["pending", "synchronized", "failed"] = "synchronized"
+    archived: bool = False
 
 
 class HistoryResponse(BaseModel):
@@ -179,6 +182,8 @@ class DashboardKpis(BaseModel):
     average_predicted_yield_t_ha: float | None
     low_confidence_assessments: int
     referrals_required: int
+    assessments_this_season: int = 0
+    awaiting_synchronization: int = 0
 
 
 class CountPoint(BaseModel):
@@ -195,6 +200,7 @@ class YieldPoint(BaseModel):
 class DashboardResponse(BaseModel):
     kpis: DashboardKpis
     assessments_over_time: list[CountPoint]
+    yield_over_time: list[YieldPoint]
     risk_distribution: list[CountPoint]
     confidence_distribution: list[CountPoint]
     frequent_drivers: list[CountPoint]
@@ -203,6 +209,9 @@ class DashboardResponse(BaseModel):
     contains_synthetic_demo: bool
     small_sample: bool
     active_filters: dict[str, str | bool | None]
+    model_version: str = ""
+    recent_assessments: list[HistoryItem] = Field(default_factory=list)
+    data_quality_alerts: list[HistoryItem] = Field(default_factory=list)
 
 
 class DemoScenario(BaseModel):
