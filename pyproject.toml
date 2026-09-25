@@ -11,17 +11,20 @@ requires-python = ">=3.12,<3.15"
 license = { text = "MIT" }
 authors = [{ name = "MundaSense AI contributors" }]
 dependencies = [
+  "fastapi==0.141.1",
   "joblib==1.6.0",
   "matplotlib==3.11.1",
   "numpy==2.5.2",
   "pandas==3.0.5",
   "PyYAML==6.0.3",
+  "pydantic==2.13.5",
   "scikit-learn==1.9.0",
   "streamlit==1.62.0",
+  "uvicorn==0.52.4",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest==9.1.1", "ruff==0.16.5"]
+dev = ["httpx==0.28.1", "pytest==9.1.1", "ruff==0.16.5"]
 
 [tool.setuptools]
 package-dir = { "" = "src" }

@@ -2,74 +2,82 @@
 
 ## Decision
 
-MundaSense AI is a local modular monolith. Streamlit is the presentation adapter; every decision is
-implemented below the view layer so it can be tested independently and later exposed through a
-mobile or API adapter without rewriting policy logic.
+MundaSense AI is a local modular monolith with two presentation adapters. The primary adapter is a
+React single-page application using a small FastAPI transport layer. The original Streamlit UI is
+retained as a legacy diagnostic adapter. Neither owns statistical, safety, advisory, or persistence
+logic.
 
 ```text
-Streamlit pages
-      |
-      v
+Browser
+  React Router + TanStack Query + React Hook Form + Recharts
+                   |
+              typed JSON API
+                   |
+FastAPI: validation, serialisation, filters, report rendering
+                   |
 AssessmentService
-  |-- validation and feature contract
-  |-- trusted model registry -> prediction -> residual interval
+  |-- feature-contract validation
+  |-- trusted model -> prediction -> residual interval
   |-- unusual-input detector -> risk/confidence policy
-  |-- local explanation adapter
-  |-- YAML advisory engine
-  `-- SQLite assessment repository -> CSV export
+  |-- approximate local explanation
+  |-- versioned YAML advisory rules
+  `-- SQLite immutable snapshot repository -> safe CSV
 ```
 
-## Dependency boundaries
+The Vite development server proxies `/api` to `127.0.0.1:8000`. A production frontend build is
+served by FastAPI with SPA route fallback. Route components are lazy-loaded, so dashboard charting
+code is not part of the initial page chunk.
 
-- `schemas.py` defines typed service contracts and has no Streamlit dependency.
-- `validation.py` enforces crop, numeric, unit, text, and hard-bound contracts.
-- `data/` owns UTF-8 CSV ingestion, the canonical contract, deterministic demo generation, and a
-  machine-readable quality report.
-- `ml/` owns feature order, preprocessing, candidate training, grouped splitting, evaluation,
-  uncertainty, approximate local explanations, drift checks, and bundle integrity.
-- `advisory/` is separate from the statistical model. A model update cannot silently change advice.
-- `storage/` stores immutable result snapshots through parameterised queries and neutralises CSV
-  formulas.
-- `i18n/` loads stable keys, checks interpolation parity, and falls back to English.
-- `ui/` contains shared Streamlit rendering only.
+## Boundaries
 
-## End-to-end assessment flow
+- `frontend/` owns interaction, responsive layout, URL filters, local interface preferences, and
+  human-readable visualisation. It does not reproduce model or advisory decisions.
+- `backend/` maps HTTP payloads to domain requests and stable response schemas. It aggregates stored
+  records for dashboards and escapes printable report output.
+- `src/mundasense/schemas.py` defines framework-independent contracts.
+- `validation.py` enforces maize scope, five numeric fields, units, text bounds, language, and
+  provenance source.
+- `ml/` owns feature order, candidate training, grouped splits, uncertainty, explanations, drift
+  checks, and bundle integrity.
+- `advisory/` is versioned independently from the model; a model update cannot silently change
+  advice.
+- `storage/` persists complete immutable snapshots and neutralises spreadsheet formulas.
+- `i18n/` validates Python catalogues and falls back to English. The React demonstration dictionary
+  applies the same fallback rule for shell copy.
 
-1. Validate and coerce required maize inputs; reject impossible values and bounded-text violations.
-2. Enforce the five-feature order stored in the model contract.
-3. Predict with the checksum-verified local scikit-learn pipeline.
-4. Build a non-negative presentation range using the held-out calibration absolute-residual
-   quantile; retain raw bounds in technical metadata.
-5. Compare each input with fitted-data min/max and robust 1st/99th percentiles.
-6. Derive the provisional risk band and confidence label from versioned policies.
-7. Estimate three local drivers by replacing one feature at a time with its training median.
-8. Select the highest-priority guarded action and up to two supporting actions from `rules.yml`.
-9. Trigger human referral for high risk, low/insufficient confidence, severe warnings, or several
-   unusual inputs.
-10. Persist inputs, outputs, warnings, drivers, rules, versions, and timestamps as one immutable
-    SQLite snapshot.
+## Assessment and scenario flow
 
-## Trust boundaries
+1. The React form validates for immediate accessible feedback.
+2. FastAPI/Pydantic rejects unexpected fields, impossible values, oversized text, and oversized
+   bodies.
+3. `AssessmentService` revalidates and runs the checksum-verified local bundle.
+4. It produces a non-negative calibrated range, warnings, provisional risk/confidence, three local
+   drivers, deterministic advice, and referral state.
+5. A normal assessment is saved as one immutable SQLite snapshot.
+6. A scenario uses the same service with changed numeric values and `persist=False`; only an
+   explicit save creates a new `source=scenario`, `data_status=synthetic_demo` snapshot.
 
-- The browser and entered text are untrusted. Validation occurs before inference or storage.
-- CSV training sources are untrusted until the ingestion contract and quality checks pass.
-- Joblib is code-capable serialisation. Only the configured path inside `models/` is accepted, and a
-  SHA-256 sidecar must match before deserialisation. User model uploads do not exist.
-- Rule and locale catalogues are local release files validated at load time.
-- CSV exports cross into spreadsheet software, so formula-like leading characters are prefixed with
-  an apostrophe.
+## Dashboard and reporting
 
-## Persistence
+Dashboard summaries are computed only from stored snapshots matching explicit server-side filters.
+The API returns counts, average central estimates, distributions, common top drivers, district
+aggregates with sample sizes, and a transparent priority ordering. Empty and small samples remain
+visible rather than being hidden. CSV export applies the same filters. Printable Field Health
+Passports are server-rendered, escaped, local-only documents with inputs, versions, warnings,
+advice, referral, data status, and disclaimers.
 
-SQLite is initialised idempotently and uses WAL mode, transactions, parameterised SQL, and indexes
-on timestamp, risk, and district. `result_json` preserves the complete immutable snapshot while
-scalar columns support filters. Deletion is explicit and confirmed in the interface. A pilot must
-define retention, access, backup, recovery, and deletion ownership.
+## Trust and offline boundaries
 
-## Offline and extension points
+- Browser and entered text are untrusted; validation occurs before inference and storage.
+- Joblib is code-capable. Only the configured file below `models/` is accepted and its SHA-256
+  sidecar must match.
+- SQL uses parameters. Report values are HTML-escaped. Formula-leading CSV cells receive a safe
+  apostrophe.
+- CORS permits only configured exact origins; the default list contains local Vite/preview origins.
+- The service worker caches static shell files only. Live API state is never silently replaced by a
+  cached response, and a waiting release activates only after the user accepts the update banner.
+- Core operation requires no network after packages are installed. Weather, satellite, sync,
+  messaging, and cloud analytics remain out of scope.
 
-Inference, explanation, rules, history, and export use only local assets. Candidate future adapters
-for weather, satellite, soil, synchronisation, mobile, or institutional reporting must remain
-optional and cannot become a prerequisite for the default workflow. Crop expansion requires a new
-feature contract, model, risk policy, and reviewed advisory package rather than reusing maize rules.
-
+Crop expansion requires a separate data contract, model, risk policy, and reviewed advisory package;
+the maize policy must not be relabelled for another crop.

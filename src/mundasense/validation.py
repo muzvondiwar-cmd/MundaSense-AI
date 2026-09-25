@@ -47,6 +47,12 @@ def validate_assessment(payload: Mapping[str, Any] | AssessmentRequest) -> Asses
     crop = str(values.get("crop", "maize")).strip().lower()
     if crop != "maize":
         errors.append("crop must be maize for this MVP.")
+    language = str(values.get("language", "en")).strip().lower()
+    if language not in {"en", "sn"}:
+        errors.append("language must be 'en' or 'sn'.")
+    source = str(values.get("source", "manual")).strip().lower()
+    if source not in {"manual", "demo", "scenario"}:
+        errors.append("source must be manual, demo, or scenario.")
 
     try:
         season = sanitise_text(values.get("season", ""), field_name="season", max_length=30)
@@ -66,4 +72,6 @@ def validate_assessment(payload: Mapping[str, Any] | AssessmentRequest) -> Asses
         season=season,
         district=district,
         farm_reference=farm_reference,
+        language=language,
+        source=source,
     )

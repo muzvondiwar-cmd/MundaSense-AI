@@ -1,64 +1,65 @@
 # Testing and release guide
 
-## Quality gates
+## Automated gates
 
-From an activated Python 3.12 environment with development requirements installed:
+Run from the repository root after Python and frontend dependencies are installed:
 
-```text
-python -m ruff check .
-python -m ruff format --check .
-python -m pytest
-python scripts/train_model.py --regenerate-data
-python scripts/evaluate_model.py
-python scripts/verify_release.py
-python -m streamlit run app.py
+```powershell
+.venv\Scripts\python -m ruff check .
+.venv\Scripts\python -m ruff format --check .
+.venv\Scripts\python -m pytest
+.venv\Scripts\python scripts\verify_release.py
+Set-Location frontend
+npm test
+npm run build
 ```
 
-The PowerShell wrapper `scripts/quality.ps1` runs lint, formatting, tests, and release verification.
-CI repeats these gates and performs a compact synthetic retraining smoke test.
+`scripts\quality.ps1` runs this sequence on Windows. Python tests cover domain boundaries, risk and
+confidence policies, intervals, OOD warnings, advisory precedence, i18n fallback, persistence,
+formula-safe export, API validation, CORS, non-persisting scenarios, dashboard filters, report
+escaping, and filtered-empty export. Frontend tests cover form validation, text-and-icon status
+badges, i18n fallback, and the scenario simulation warning. The production build is a required type
+and bundling gate.
 
-## Automated coverage
+## Browser acceptance matrix
 
-Unit tests cover numeric/text boundaries, crop scope, feature-order enforcement, risk threshold
-edges, confidence, OOD severity, interval clipping, rule precedence, safe default advice, Shona
-fallback and placeholder parity, SQLite idempotence, snapshot mapping, and CSV formula neutralisation.
+Verify at 360 px mobile, 768 px tablet, and 1440 px desktop widths with the local API running.
 
-Integration tests train a self-contained bundle, check candidate families and the baseline gate,
-produce a finite deterministic prediction, verify no target leakage, run the full service, persist and
-reopen an unchanged result, and convert missing/corrupt bundles into controlled errors.
+1. Home: readiness, synthetic-model banner, safety boundary, three-step explanation, demo presets,
+   and all primary links are visible and keyboard reachable.
+2. Assessment: step progress, back/continue behavior, units, hard limits, optional-text bounds,
+   preset provenance, review summary, processing state, and preserved field values after errors.
+3. Result: yield/range, labelled and icon-supported risk/confidence, drivers, warnings, advisory,
+   referral, disclaimer, versions, history link, scenario link, and print link.
+4. Scenario: baseline selection, sliders and numeric controls, debounced same-backend recomputation,
+   visible deltas, persistent simulation notice, and no history change before explicit save.
+5. Dashboard: empty/small-sample states, KPI definitions, filters in the URL, risk cross-filter,
+   chart text alternatives, sample sizes, synthetic-data notice, and priority-case links.
+6. History/detail: search, all filters/sorts, responsive table/cards, matching CSV export, immutable
+   snapshot, exact-ID delete confirmation, and printable report.
+7. Model/About/404: release metadata, limitations, data-use copy, route recovery, and no dead links.
+8. Navigation: collapsible desktop rail, keyboard-contained mobile dialog, bottom navigation,
+   language switch, farmer/officer mode, skip link, focus indicators, and backend-offline banner.
 
-Service-level smoke tests run balanced, water-stress, and unusual-data scenarios through validation,
-prediction, uncertainty, risk, confidence, explanation, advice, and referral.
+## Deterministic API checks
 
-## Manual UI acceptance
+- Balanced demo returns finite yield/range, three drivers, and a saved synthetic-demo snapshot.
+- Water-stress demo exercises the current model and rules; no UI result is hardcoded.
+- Unusual demo returns OOD warnings, reduced confidence as policy determines, and referral when
+  thresholds require it.
+- Invalid numeric and overlong text payloads return structured `422` responses without inference.
+- Scenario simulation returns `persisted=false`; list count changes only after explicit save.
+- Dashboard totals and export rows match the same filter query. A zero-match export has one header
+  row only.
+- Aliases beginning with `=`, `+`, `-`, or `@` are neutralised in CSV; HTML-like text is escaped in
+  reports.
 
-1. Launch Streamlit and confirm the home page shows the logo, tagline, local-operation statement,
-   synthetic-data banner, safety boundary, three-step flow, and working start button.
-2. Run Scenario A. Confirm yield, range, labelled/icon risk, confidence, three drivers, one priority
-   action, disclaimer, and technical trace.
-3. Run Scenario B. Confirm current model/policy computation (no hardcoded result) and water-stress or
-   risk action as applicable.
-4. Run Scenario C. Confirm visible OOD warnings, reduced confidence, and extension referral.
-5. Open history. Confirm newest-first order, filters, immutable detail, CSV download, and confirmed
-   deletion.
-6. Open model evaluation. Confirm exact release metadata, candidate table, two plots, subgroup sizes,
-   limitations, and readiness.
-7. Toggle Shona. Confirm priority strings change, English fallback remains readable, and review
-   status is visible.
-8. Stop network access and repeat an assessment to verify the core path remains local.
+## Offline and failure checks
 
-## Failure cases
+After dependencies are installed, disconnect networking and repeat assessment, history, scenario,
+dashboard, export, and report flows. Stop FastAPI and confirm the frontend shows an honest offline
+banner instead of stale operational data. Restore it and confirm queries recover.
 
-- Rename the bundle: startup and readiness must show the exact training recovery command.
-- Alter a bundle byte: checksum verification must block deserialisation.
-- Supply an invalid rules catalogue in a test: catalogue loading must fail before advice is shown.
-- Enter impossible numeric values or overlong text: the assessment must not run.
-- Export a farm alias beginning with `=`, `+`, `-`, or `@`: the CSV cell must be prefixed safely.
-
-## ML validation notes
-
-Fitting uses only the fitting districts; the calibration district selects the champion and calibrates
-the interval; test districts remain untouched until final evaluation. The target and context metadata
-never enter the feature matrix. Same-seed runs use deterministic generators and estimator seeds.
-Metric thresholds are provisional engineering gates rather than agronomic acceptance criteria.
-
+Rename the model bundle or alter its checksum in a disposable checkout: startup must fail closed.
+Invalid rule or locale catalogues must also fail before advice is served. A release must never
+auto-train, download, or silently substitute a model.

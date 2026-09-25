@@ -1,27 +1,48 @@
 # Operations and recovery
 
-## Readiness
+## Start and readiness
 
-`python scripts/verify_release.py` verifies required files, bundle schema/checksum/metrics, rules,
-locales, directories, database write access, and all three service-level scenarios. The evaluation
-page displays the same readiness categories.
+For development, `.venv\Scripts\python scripts\dev.py` supervises FastAPI on port 8000 and Vite on
+5173. For a production-style local run, build `frontend/` then start
+`python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000`; the API serves the SPA.
 
-## Backup and restore
+`GET /api/health` reports model, rule catalogue, locale, database, and required-directory readiness
+using the already loaded runtime. `python scripts/verify_release.py` performs deeper release checks
+and the three service-level scenarios. Do not expose this prototype directly to a public network.
 
-Stop the app before copying the local SQLite database and its WAL/SHM companions. Backups must be
-protected like the source device and include the model/rule versions needed to interpret records.
-Test restore on a separate path. Do not commit backups to Git or upload them to an unapproved service.
+## Local persistence and backup
 
-## Model or rules failure
+Assessments live in `data/local/mundasense.sqlite3`. Stop the API before copying the database and
+its WAL/SHM companions. Backups must be protected like the source device and include the exact
+model, checksum, rule catalogue, and app version required to interpret snapshots. Test restore on a
+separate configured path. Do not commit or upload backups to an unapproved service.
 
-Do not auto-retrain at startup. Restore the last trusted model and checksum, or run the documented
-training command for the demonstration path. A rule failure requires restoration of the matching
-reviewed YAML release. Historical snapshots are never silently recomputed.
+Deletion is exact-record and permanent after the UI confirmation; it is not a substitute for a
+pilot retention policy. A deployment must name the retention owner, backup owner, authorised
+operators, and recovery-time expectations.
+
+## Model, rules, or API failure
+
+The process fails closed when the configured model is missing, outside the trusted directory, or has
+an invalid checksum. Do not auto-retrain at startup. Restore the previous known-good model and
+sidecar, or intentionally run the documented synthetic training command. A rule/locale failure
+requires restoration of its matching reviewed release. Historical snapshots are never recomputed.
+
+If the frontend opens but FastAPI is stopped, a red operational banner appears and new assessment,
+history, dashboard, and report operations remain unavailable. Restart the API and check `/api/health`.
+The service worker caches the shell only and exposes waiting releases through an **Update now**
+banner. Clearing browser site data removes that cache and local UI preferences but does not delete
+SQLite records.
 
 ## Upgrade and rollback
 
-Package model, checksum, metrics, figures, model card, rule catalogue, locale report, tests, and
-change log as one release. Run quality and readiness gates, retain the previous known-good package,
-and record user-visible changes and rollback target. A pilot adds signature verification and a named
-release owner.
+Package the frontend build, Python source, model/checksum, evaluation metrics/figures, model card,
+rules, locale report, tests, and change notes as one release. Run every gate in `docs/testing.md`,
+retain the prior known-good package, and record the rollback target. Database schema changes must be
+backward-readable or supplied with a tested migration and backup plan.
 
+## Offline and integration policy
+
+Once dependencies are installed, the core workflow is fully local. Weather, satellite, soil data,
+sync, messaging, telemetry, authentication, and cloud storage are future integrations and must be
+optional, consented, failure-tolerant, and unable to weaken the default local workflow.

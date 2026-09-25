@@ -130,10 +130,13 @@ class AssessmentRepository:
     def export_csv(self, assessment_ids: list[str] | None = None) -> str:
         sql = "SELECT result_json FROM assessments"
         params: list[Any] = []
-        if assessment_ids:
-            placeholders = ",".join("?" for _ in assessment_ids)
-            sql += f" WHERE id IN ({placeholders})"
-            params.extend(assessment_ids)
+        if assessment_ids is not None:
+            if assessment_ids:
+                placeholders = ",".join("?" for _ in assessment_ids)
+                sql += f" WHERE id IN ({placeholders})"
+                params.extend(assessment_ids)
+            else:
+                sql += " WHERE 1 = 0"
         sql += " ORDER BY created_at DESC"
         with self.database.connect() as connection:
             payloads = [json.loads(row["result_json"]) for row in connection.execute(sql, params)]
@@ -155,6 +158,8 @@ class AssessmentRepository:
             "warning_codes",
             "advisory_rule_ids",
             "referral_required",
+            "source",
+            "data_status",
             "model_version",
             "rules_version",
             "is_synthetic_model",
@@ -164,6 +169,14 @@ class AssessmentRepository:
         writer.writeheader()
         for payload in payloads:
             inputs = payload["validated_inputs"]
+            source = inputs.get("source") or (
+                "demo"
+                if str(inputs.get("farm_reference", "")).lower().startswith("demo")
+                else "manual"
+            )
+            data_status = payload.get("data_status") or (
+                "synthetic_demo" if source in {"demo", "scenario"} else "real"
+            )
             row = {
                 "assessment_id": payload["assessment_id"],
                 "created_at": payload["created_at"],
@@ -187,6 +200,8 @@ class AssessmentRepository:
                 "warning_codes": ";".join(item["code"] for item in payload["data_warnings"]),
                 "advisory_rule_ids": ";".join(item["rule_id"] for item in payload["advisories"]),
                 "referral_required": payload["referral_required"],
+                "source": source,
+                "data_status": data_status,
                 "model_version": payload["model_version"],
                 "rules_version": payload["rules_version"],
                 "is_synthetic_model": payload["is_synthetic_model"],

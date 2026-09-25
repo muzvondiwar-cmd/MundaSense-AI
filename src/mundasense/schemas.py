@@ -18,6 +18,8 @@ class AssessmentRequest:
     season: str = "2025/26"
     district: str = ""
     farm_reference: str = ""
+    language: Literal["en", "sn"] = "en"
+    source: Literal["manual", "demo", "scenario"] = "manual"
 
     def model_features(self) -> dict[str, float]:
         return {
@@ -85,6 +87,7 @@ class AssessmentResult:
     is_synthetic_model: bool
     disclaimer_key: str
     explanation_method: str
+    data_status: Literal["real", "synthetic_demo"] = "real"
     technical_metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:

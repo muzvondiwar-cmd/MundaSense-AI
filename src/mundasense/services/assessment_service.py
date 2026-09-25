@@ -91,6 +91,7 @@ class AssessmentService:
             is_synthetic_model=bool(self.bundle["is_synthetic"]),
             disclaimer_key="result.disclaimer",
             explanation_method=self.bundle["explanation_method"],
+            data_status=("synthetic_demo" if validated.source in {"demo", "scenario"} else "real"),
             technical_metadata={
                 "raw_interval_bounds": raw_bounds,
                 "dataset_fingerprint": self.bundle["dataset_fingerprint"],
