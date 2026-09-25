@@ -100,6 +100,22 @@ Open `http://127.0.0.1:8080`; OpenAPI remains available at `http://127.0.0.1:800
 stored in the `mundasense-data` named volume. After images and packages are installed, the complete
 demonstration requires no internet connection.
 
+### Vercel deployment
+
+The repository includes a Vite build configuration and `api/index.py` FastAPI entrypoint for a
+single Vercel project:
+
+```powershell
+vercel link
+vercel deploy
+vercel deploy --prod
+```
+
+Set `MUNDASENSE_DATABASE_URL` to a PostgreSQL SQLAlchemy URL in Vercel for durable assessment
+history. When it is absent, preview deployments use SQLite in `/tmp` so the demo can run, but that
+filesystem is ephemeral and records may disappear between function instances. The React app's
+IndexedDB draft/outbox support remains available in either mode.
+
 ## Demo path
 
 1. Open **Dashboard** and confirm the green backend-ready status plus seeded demo labels.
@@ -213,8 +229,8 @@ docker-compose.yml      Complete local two-container deployment
   merge screen.
 - The hackathon deployment has no authentication, encrypted database, managed backup, or multi-user
   authorization.
-- PostgreSQL is enabled architecturally through a SQLAlchemy URL but still needs its driver,
-  migration rehearsal, and production operations before use.
+- PostgreSQL is enabled through a SQLAlchemy URL and bundled driver, but still needs a managed
+  database, migration rehearsal, backups, and production operations before a real pilot.
 
 ## Licence and pilot status
 

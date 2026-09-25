@@ -1,12 +1,9 @@
-alembic==1.16.5
 fastapi==0.141.1
 joblib==1.6.0
-matplotlib==3.11.1
 numpy==2.5.2
 pandas==3.0.5
+psycopg[binary]==3.3.6
 PyYAML==6.0.3
 pydantic==2.13.5
 scikit-learn==1.9.0
-streamlit==1.62.0
 SQLAlchemy==2.0.43
-uvicorn==0.52.4
