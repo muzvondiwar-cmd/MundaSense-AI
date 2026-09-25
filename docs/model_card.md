@@ -4,7 +4,7 @@
 
 | Field | Value |
 |---|---|
-| Model version | `demo-2026.08-v1` |
+| Model version | `demo-2026` |
 | Bundle schema | `1.0` |
 | Status | Demonstration only; not field-validated |
 | Dataset | 720 deterministic synthetic maize records |

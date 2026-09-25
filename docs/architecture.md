@@ -1,4 +1,4 @@
-# MundaSense AI architecture
+# MundaSenseAI architecture
 
 ## Architectural decision
 

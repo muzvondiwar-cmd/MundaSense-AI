@@ -1,4 +1,4 @@
-# MundaSense AI API
+# MundaSenseAI API
 
 The primary base URL is `http://127.0.0.1:8000/api/v1`. OpenAPI documentation is available at
 `http://127.0.0.1:8000/docs`. JSON bodies are limited to 32 KiB.
